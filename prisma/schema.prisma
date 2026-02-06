@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  puzzles UserPuzzle[]
+}
+
+model Puzzle {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  title      String
+  prompt     String
+  type       String
+  difficulty Int
+  points     Int
+  solution   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  users UserPuzzle[]
+
+  @@index([difficulty])
+}
+
+model UserPuzzle {
+  id            String   @id @default(cuid())
+  userId        String
+  puzzleId      String
+  attemptsCount Int      @default(0)
+  completedAt   DateTime?
+  lastAttemptAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  puzzle Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, puzzleId])
+  @@index([userId, completedAt])
+}
