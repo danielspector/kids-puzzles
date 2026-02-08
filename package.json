@@ -3,14 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "prisma generate",
     "dev": "next dev",
+    "prebuild": "prisma generate",
     "build": "next build",
     "vercel-build": "prisma migrate deploy && next build",
+    "prestart": "prisma generate",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:reset-progress": "tsx scripts/reset-progress.ts",
     "demo:user": "tsx scripts/create-demo-user.ts"
   },
   "dependencies": {

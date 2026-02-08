@@ -27,6 +27,7 @@ model Puzzle {
   slug       String   @unique
   title      String
   prompt     String
+  hint       String?
   type       String
   difficulty Int
   points     Int

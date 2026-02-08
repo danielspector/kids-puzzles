@@ -77,7 +77,7 @@ export default async function PuzzlePage(props: {
             {puzzle.prompt}
           </div>
 
-          <PuzzleForm slug={puzzle.slug} type={puzzle.type} />
+          <PuzzleForm slug={puzzle.slug} type={puzzle.type} hint={puzzle.hint} />
         </Card>
       </main>
     </div>

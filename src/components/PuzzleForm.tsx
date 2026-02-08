@@ -9,11 +9,13 @@ import { Input } from "@/components/ui/Input";
 type Props = {
   slug: string;
   type: string;
+  hint?: string | null;
 };
 
-export function PuzzleForm({ slug, type }: Props) {
+export function PuzzleForm({ slug, type, hint }: Props) {
   const router = useRouter();
   const [answer, setAnswer] = useState("");
+  const [hintOpen, setHintOpen] = useState(false);
   const [status, setStatus] = useState<
     | { kind: "idle" }
     | { kind: "submitting" }
@@ -91,6 +93,25 @@ export function PuzzleForm({ slug, type }: Props) {
         </div>
       ) : (
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
+          {hint ? (
+            <div className="rounded-3xl bg-white/50 p-4 ring-1 ring-black/10">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-semibold text-black/70">Need a hint?</div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setHintOpen((v) => !v)}
+                >
+                  {hintOpen ? "Hide hint" : "Show hint"}
+                </Button>
+              </div>
+              {hintOpen ? (
+                <div className="mt-3 rounded-2xl bg-white/70 p-4 text-sm leading-6 text-black/70 ring-1 ring-black/10">
+                  {hint}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               value={answer}

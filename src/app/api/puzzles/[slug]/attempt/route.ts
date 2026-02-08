@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 
 export const runtime = "nodejs";
 
@@ -63,6 +64,21 @@ export async function POST(
     }
 
     const userId = session.user.id;
+
+    const userExists = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!userExists) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Your session is out of date. Please sign out and sign back in.",
+        },
+        { status: 401 },
+      );
+    }
+
     const now = new Date();
     const correct = isCorrectAnswer({
       type: puzzle.type,
@@ -70,36 +86,55 @@ export async function POST(
       received: parsed.data.answer,
     });
 
-    const existing = await prisma.userPuzzle.findUnique({
-      where: { userId_puzzleId: { userId, puzzleId: puzzle.id } },
-    });
-
-    const firstTimeCompletion = correct && !existing?.completedAt;
-    const pointsAwarded = firstTimeCompletion ? puzzle.points : 0;
-
-    if (!existing) {
-      await prisma.userPuzzle.create({
-        data: {
+    const firstTimeCompletion = await prisma.$transaction(async (tx) => {
+      await tx.userPuzzle.upsert({
+        where: { userId_puzzleId: { userId, puzzleId: puzzle.id } },
+        create: {
           userId,
           puzzleId: puzzle.id,
           attemptsCount: 1,
           lastAttemptAt: now,
-          completedAt: correct ? now : null,
+          // Awarding completion happens via conditional update below.
+          completedAt: null,
         },
-      });
-    } else {
-      await prisma.userPuzzle.update({
-        where: { id: existing.id },
-        data: {
+        update: {
           attemptsCount: { increment: 1 },
           lastAttemptAt: now,
-          ...(firstTimeCompletion ? { completedAt: now } : {}),
         },
       });
-    }
 
+      if (!correct) return false;
+
+      const completion = await tx.userPuzzle.updateMany({
+        where: { userId, puzzleId: puzzle.id, completedAt: null },
+        data: { completedAt: now },
+      });
+
+      return completion.count > 0;
+    });
+
+    const pointsAwarded = firstTimeCompletion ? puzzle.points : 0;
     return NextResponse.json({ ok: true, correct, pointsAwarded });
   } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === "P2003") {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Your session is out of date. Please sign out and sign back in.",
+          },
+          { status: 401 },
+        );
+      }
+
+      if (err.code === "P2002") {
+        return NextResponse.json(
+          { ok: false, error: "Please retry." },
+          { status: 409 },
+        );
+      }
+    }
+
     const details =
       process.env.NODE_ENV !== "production" ? String(err) : undefined;
 
