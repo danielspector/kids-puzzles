@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import crypto from "node:crypto";
 
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 
 export const runtime = "nodejs";
 
@@ -43,11 +45,31 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const details =
-      process.env.NODE_ENV !== "production" ? String(err) : undefined;
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === "P2002") {
+        return NextResponse.json(
+          { ok: false, error: "That email is already in use." },
+          { status: 409 },
+        );
+      }
+
+      // DB unreachable / connection issues
+      if (err.code === "P1001" || err.code === "P1017") {
+        return NextResponse.json(
+          { ok: false, error: "Database unavailable. Try again in a moment." },
+          { status: 503 },
+        );
+      }
+    }
+
+    const errorId = crypto.randomUUID();
+    console.error("/api/signup error", {
+      errorId,
+      err,
+    });
 
     return NextResponse.json(
-      { ok: false, error: "Server error during signup.", details },
+      { ok: false, error: "Server error during signup.", errorId },
       { status: 500 },
     );
   }
