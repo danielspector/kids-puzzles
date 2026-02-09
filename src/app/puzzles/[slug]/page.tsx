@@ -9,6 +9,27 @@ import { Logo } from "@/components/Logo";
 import { SignOutButton } from "@/components/SignOutButton";
 import { PuzzleForm } from "@/components/PuzzleForm";
 
+type PuzzleRow = {
+  id: string;
+  slug: string;
+  title: string;
+  prompt: string;
+  hint: string | null;
+  type: string;
+  difficulty: number;
+  points: number;
+};
+
+type PuzzleIndexRow = {
+  id: string;
+  slug: string;
+  difficulty: number;
+};
+
+type CompletedRow = {
+  puzzleId: string;
+};
+
 export default async function PuzzlePage(props: {
   params: Promise<{ slug: string }>;
 }) {
@@ -18,20 +39,32 @@ export default async function PuzzlePage(props: {
   const userId = session.user.id;
   const { slug } = await props.params;
 
-  const puzzle = await prisma.puzzle.findUnique({ where: { slug } });
+  const puzzle = (await prisma.puzzle.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      prompt: true,
+      hint: true,
+      type: true,
+      difficulty: true,
+      points: true,
+    },
+  })) as PuzzleRow | null;
   if (!puzzle) redirect("/play");
 
-  const puzzles = await prisma.puzzle.findMany({
+  const puzzles = (await prisma.puzzle.findMany({
     orderBy: [{ difficulty: "asc" }, { slug: "asc" }],
     select: { id: true, slug: true, difficulty: true },
-  });
+  })) as PuzzleIndexRow[];
   const idx = puzzles.findIndex((p) => p.id === puzzle.id);
   if (idx === -1) redirect("/play");
 
-  const completed = await prisma.userPuzzle.findMany({
+  const completed = (await prisma.userPuzzle.findMany({
     where: { userId, completedAt: { not: null } },
     select: { puzzleId: true },
-  });
+  })) as CompletedRow[];
   const completedIds = new Set(completed.map((c) => c.puzzleId));
 
   const missingPrereq = puzzles.slice(0, idx).some((p) => !completedIds.has(p.id));

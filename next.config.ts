@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
 
   // Ensure Prisma engines are included in Vercel function bundles.
   outputFileTracingIncludes: {
-    "/*": ["./src/generated/prisma/**", "./node_modules/.prisma/client/**"],
-    "/api/**": ["./src/generated/prisma/**", "./node_modules/.prisma/client/**"],
+    "/*": ["./node_modules/.prisma/client/**"],
+    "/api/**": ["./node_modules/.prisma/client/**"],
   },
 
   webpack: (config, { isServer }) => {

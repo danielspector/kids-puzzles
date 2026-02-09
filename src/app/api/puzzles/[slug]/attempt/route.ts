@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { z } from "zod";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import type { Prisma } from "@prisma/client";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { Prisma } from "@/generated/prisma/client";
 
 export const runtime = "nodejs";
 
@@ -86,7 +87,8 @@ export async function POST(
       received: parsed.data.answer,
     });
 
-    const firstTimeCompletion = await prisma.$transaction(async (tx) => {
+    const firstTimeCompletion = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       await tx.userPuzzle.upsert({
         where: { userId_puzzleId: { userId, puzzleId: puzzle.id } },
         create: {
@@ -111,12 +113,13 @@ export async function POST(
       });
 
       return completion.count > 0;
-    });
+      },
+    );
 
     const pointsAwarded = firstTimeCompletion ? puzzle.points : 0;
     return NextResponse.json({ ok: true, correct, pointsAwarded });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err instanceof PrismaClientKnownRequestError) {
       if (err.code === "P2003") {
         return NextResponse.json(
           {

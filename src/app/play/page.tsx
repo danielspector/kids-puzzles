@@ -4,20 +4,29 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
+type PuzzleRow = {
+  id: string;
+  slug: string;
+};
+
+type CompletedRow = {
+  puzzleId: string;
+};
+
 export default async function PlayPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
   const userId = session.user.id;
-  const puzzles = await prisma.puzzle.findMany({
+  const puzzles = (await prisma.puzzle.findMany({
     orderBy: [{ difficulty: "asc" }, { slug: "asc" }],
     select: { id: true, slug: true },
-  });
+  })) as PuzzleRow[];
 
-  const completed = await prisma.userPuzzle.findMany({
+  const completed = (await prisma.userPuzzle.findMany({
     where: { userId, completedAt: { not: null } },
     select: { puzzleId: true },
-  });
+  })) as CompletedRow[];
   const completedIds = new Set(completed.map((c) => c.puzzleId));
 
   const next = puzzles.find((p) => !completedIds.has(p.id)) ?? puzzles[0] ?? null;
